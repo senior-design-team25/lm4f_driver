@@ -86,6 +86,9 @@ void cmd_handler(void) {
         if (data < 0)
             return;
 
+        if (cmd_count == 0 && !cmd_handlers[data])
+            return cmd_error_handler(CMD_NO_HANDLER);
+
         cmd_buffer[cmd_count++] = data;
 
         if (cmd_count == CMD_SIZE)
@@ -111,9 +114,6 @@ void cmd_handler(void) {
 
     if (check != 0)
         return cmd_error_handler(CMD_BAD_CHECK);
-
-    if (!handler)
-        return cmd_error_handler(CMD_NO_HANDLER);
 
     return handler(value);
 }
