@@ -102,13 +102,6 @@ void cmd_handler(void) {
     ((unsigned char *)&value)[1] = cmd_buffer[2];
     ((unsigned char *)&value)[2] = cmd_buffer[3];
     ((unsigned char *)&value)[3] = cmd_buffer[4];
-    Printf("{%02x%02x%02x%02x%02x%02x}\n",
-           cmd_buffer[0],
-           cmd_buffer[1],
-           cmd_buffer[2],
-           cmd_buffer[3],
-           cmd_buffer[4],
-           cmd_buffer[5]);
 
     for (i = 0; i < CMD_SIZE; i++) {
         check ^= cmd_buffer[i];
