@@ -13,9 +13,9 @@
 // handler functions for dispatching calls
 // defaults to null pointers and can be set
 // to remove handlers
-static void (*cmd_handlers[256])(float);
+static void (*cmd_handlers[256])(data_t);
 
-static void (*cmd_error_handler)(enum cmd_error);
+static void (*cmd_error_handler)(enum cmd_error, data_t *);
 
 // buffer for recieved messages
 static unsigned int cmd_count;
@@ -48,30 +48,32 @@ void cmd_init(void) {
     UARTEnable(CMD_BASE);
 }
 
-void cmd_register(unsigned char cmd, void (*handler)(float)) {
+void cmd_register(data_t cmd, void (*handler)(data_t)) {
     cmd_handlers[cmd] = handler;
 }
 
-void cmd_error_register(void (*handler)(enum cmd_error)) {
+void cmd_error_register(void (*handler)(enum cmd_error, data_t *)) {
     cmd_error_handler = handler;
 }
 
-void cmd_send(unsigned char cmd, float value) {
+void cmd_send(data_t cmd, data_t data) {
     int i;
-    unsigned char message[CMD_SIZE];
+    data_t message[CMD_SIZE];
 
-    message[0] = cmd;
-    message[1] = ((unsigned char *)&value)[0];
-    message[2] = ((unsigned char *)&value)[1];
-    message[3] = ((unsigned char *)&value)[2];
-    message[4] = ((unsigned char *)&value)[3];
+    message[0] = '=';           // start byte
+    message[1] = cmd;           // command id
+    message[2] = data;          // data
 
-    message[5] = 0;
+    // calculate xor check
+    data_t check = 0;
 
     for (i = 0; i < CMD_SIZE-1; i++) {
-        message[5] ^= message[i];
+        check ^= message[i];
     }
 
+    message[CMD_SIZE-1] = check;
+
+    // send message
     for (i = 0; i < CMD_SIZE; i++) {
         UARTCharPut(CMD_BASE, message[i]);
     }
@@ -83,38 +85,33 @@ void cmd_handler(void) {
     while (true) {
         int data = UARTCharGetNonBlocking(CMD_BASE);
 
-        if (data < 0)
+        if (data < 0 || (cmd_count == 0 && data != '='))
             return;
-
-        if (cmd_count == 0 && !cmd_handlers[data])
-            return cmd_error_handler(CMD_NO_HANDLER);
 
         cmd_buffer[cmd_count++] = data;
 
-        if (cmd_count == CMD_SIZE)
+        if (cmd_count == CMD_SIZE) {
+            cmd_count = 0;
             break;
+        }
     }
 
-    int i;
-    unsigned char check = 0;
-    float value;
-    void (*handler)(float);
 
-    handler = cmd_handlers[cmd_buffer[0]];
-    ((unsigned char *)&value)[0] = cmd_buffer[1];
-    ((unsigned char *)&value)[1] = cmd_buffer[2];
-    ((unsigned char *)&value)[2] = cmd_buffer[3];
-    ((unsigned char *)&value)[3] = cmd_buffer[4];
+    int i;
+    void (*handler)(data_t) = cmd_handlers[cmd_buffer[1]];
+    data_t data = cmd_buffer[2];
+    data_t check = 0;
 
     for (i = 0; i < CMD_SIZE; i++) {
         check ^= cmd_buffer[i];
     }
 
-    cmd_count = 0;
-
     if (check != 0)
-        return cmd_error_handler(CMD_BAD_CHECK);
+        return cmd_error_handler(CMD_BAD_CHECK, cmd_buffer);
 
-    return handler(value);
+    if (!handler)
+        return cmd_error_handler(CMD_NO_HANDLER, cmd_buffer);
+
+    return handler(data);
 }
 
