@@ -13,8 +13,6 @@
 #include <StellarisWare/driverlib/sysctl.h>
 #include <StellarisWare/driverlib/interrupt.h>
 
-#define CMD_UART UART0_BASE
-
 
 // Blink the LED to show we're on
 void heartbeat(void) {
@@ -23,13 +21,13 @@ void heartbeat(void) {
     on = !on;
 }
 
-void error_handler(enum cmd_error error, data_t *message) {
+void error_handler(enum cmd_error error) {
     static int on = true;
     SetPin(PIN_F2, on);
     on = !on;
 
     Printf("bad message {%02x %02x %02x %02x}\n",
-           message[0], message[1], message[2], message[3]);
+           cmd0->buffer[0], cmd0->buffer[1], cmd0->buffer[2], cmd0->buffer[3]);
 }
 
 tServo *motor;
@@ -55,14 +53,14 @@ int main(void) {
     brake = InitializeServo(PIN_D1);
     brake_handler(0);
 
-    cmd_init();
-    cmd_error_register(error_handler);
+    cmd_init(cmd0);
+    cmd_error_register(cmd0, error_handler);
 
-    cmd_register('m', motor_handler);
-    cmd_register('b', brake_handler);
+    cmd_register(cmd0, 'm', motor_handler);
+    cmd_register(cmd0, 'b', brake_handler);
 
     while (1) {
         Wait(0.1f);
-        cmd_send('t', 0x00);
+        cmd_send(cmd0, 't', 0x00);
     }
 }

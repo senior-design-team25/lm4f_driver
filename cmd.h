@@ -17,13 +17,6 @@
 #ifndef CMD_H
 #define CMD_H
 
-#define VEHICLE_ID 0
-#define DEVICE_ID 'b'
-
-// Note: if you change the base cmd_init
-// must be modified accordingly
-#define CMD_BASE UART1_BASE
-#define CMD_BAUD 115200
 #define CMD_SIZE 4
 
 // Definition of data element
@@ -35,12 +28,50 @@ enum cmd_error {
     CMD_NO_HANDLER,
 };
 
+struct cmd_module {
+    const struct {
+        unsigned int BASE;
+        unsigned int BAUD;
 
-void cmd_init(void);
+        unsigned int PERIPH_GPIO;
+        unsigned int PERIPH_UART;
 
-void cmd_register(data_t cmd, void (*handler)(data_t));
-void cmd_error_register(void (*handler)(enum cmd_error, data_t *));
+        unsigned int PRX;
+        unsigned int PTX;
 
-void cmd_send(data_t cmd, data_t value);
+        unsigned int PORT;
+        unsigned int PINS;
+
+        unsigned int INT;
+    };
+
+    // handler functions for dispatching calls
+    // defaults to null pointers and can be set
+    // to remove handlers
+    void (*handlers[256])(data_t);
+    void (*error_handler)(enum cmd_error);
+
+    // buffer for recieved messages
+    int count;
+    data_t buffer[CMD_SIZE];
+};
+
+// table of available modules
+extern struct cmd_module cmd_modules[];
+
+#define cmd0 (&cmd_modules[0])
+//#define cmd1 (&cmd_modules[1])
+
+
+void cmd_init(struct cmd_module *m);
+
+void cmd_register(struct cmd_module *m, data_t cmd, 
+                  void (*handler)(data_t));
+
+void cmd_error_register(struct cmd_module *m, 
+                        void (*handler)(enum cmd_error));
+
+void cmd_send(struct cmd_module *m, data_t cmd, data_t value);
+
 
 #endif // CMD_H

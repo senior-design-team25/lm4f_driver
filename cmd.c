@@ -10,59 +10,58 @@
 #include <StellarisWare/driverlib/interrupt.h>
 
 
-// handler functions for dispatching calls
-// defaults to null pointers and can be set
-// to remove handlers
-static void (*cmd_handlers[256])(data_t);
-
-static void (*cmd_error_handler)(enum cmd_error, data_t *);
-
-// buffer for recieved messages
-static unsigned int cmd_count;
-static unsigned char cmd_buffer[CMD_SIZE];
+struct cmd_module cmd_modules[] = {
+    {{ UART1_BASE, 115200, 
+       SYSCTL_PERIPH_GPIOC, SYSCTL_PERIPH_UART1,
+       GPIO_PC4_U1RX, GPIO_PC5_U1TX,
+       GPIO_PORTC_BASE, GPIO_PIN_4 | GPIO_PIN_5,
+       INT_UART1 }},
+};
 
 
-void cmd_init(void) {
+void cmd_init(struct cmd_module *m) {
     // Initialize UART
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOC);
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_UART1);
+    SysCtlPeripheralEnable(m->PERIPH_GPIO);
+    SysCtlPeripheralEnable(m->PERIPH_UART);
 
     // configure pin muxing
-    GPIOPinConfigure(GPIO_PC4_U1RX);
-    GPIOPinConfigure(GPIO_PC5_U1TX);
-    GPIOPinTypeUART(GPIO_PORTC_BASE, GPIO_PIN_4 | GPIO_PIN_5);
+    GPIOPinConfigure(m->PRX);
+    GPIOPinConfigure(m->PTX);
+    GPIOPinTypeUART(m->PORT, m->PINS);
 
     // setup uart configuration
-    UARTConfigSetExpClk(CMD_BASE, SysCtlClockGet(), CMD_BAUD,
+    UARTConfigSetExpClk(m->BASE, SysCtlClockGet(), m->BAUD,
                         (UART_CONFIG_PAR_NONE |
                          UART_CONFIG_STOP_ONE |
                          UART_CONFIG_WLEN_8));
 
-    UARTFIFOLevelSet(CMD_BASE, UART_FIFO_TX1_8, UART_FIFO_RX1_8);
+    UARTFIFOLevelSet(m->BASE, UART_FIFO_TX1_8, UART_FIFO_RX1_8);
 
     // enable uart interrupts
-    UARTIntEnable(CMD_BASE, UART_INT_RX);
-    IntEnable(INT_UART1);
-    IntPrioritySet(INT_UART1, 0x7f);
+    UARTIntEnable(m->BASE, UART_INT_RX);
+    IntEnable(m->INT);
+    IntPrioritySet(m->INT, 0x7f);
 
-    UARTEnable(CMD_BASE);
+    UARTEnable(m->BASE);
 }
 
-void cmd_register(data_t cmd, void (*handler)(data_t)) {
-    cmd_handlers[cmd] = handler;
+void cmd_register(struct cmd_module *m, data_t cmd, 
+                  void (*handler)(data_t)) {
+    m->handlers[cmd] = handler;
 }
 
-void cmd_error_register(void (*handler)(enum cmd_error, data_t *)) {
-    cmd_error_handler = handler;
+void cmd_error_register(struct cmd_module *m, 
+                        void (*handler)(enum cmd_error)) {
+    m->error_handler = handler;
 }
 
-void cmd_send(data_t cmd, data_t data) {
+void cmd_send(struct cmd_module *m, data_t cmd, data_t data) {
     int i;
     data_t message[CMD_SIZE];
 
-    message[0] = '=';           // start byte
-    message[1] = cmd;           // command id
-    message[2] = data;          // data
+    message[0] = '=';   // start byte
+    message[1] = cmd;   // command id
+    message[2] = data;  // data
 
     // calculate xor check
     data_t check = 0;
@@ -75,43 +74,43 @@ void cmd_send(data_t cmd, data_t data) {
 
     // send message
     for (i = 0; i < CMD_SIZE; i++) {
-        UARTCharPut(CMD_BASE, message[i]);
+        UARTCharPut(m->BASE, message[i]);
     }
 }
 
-void cmd_handler(void) {
-    UARTIntClear(CMD_BASE, UART_INT_RX);
-
+void cmd_handler(struct cmd_module *m) {
+    UARTIntClear(m->BASE, UART_INT_RX);
+/*
     while (true) {
-        int data = UARTCharGetNonBlocking(CMD_BASE);
+        int data = UARTCharGetNonBlocking(m->BASE);
 
-        if (data < 0 || (cmd_count == 0 && data != '='))
+        if (data < 0 || (m->count == 0 && data != '='))
             return;
 
-        cmd_buffer[cmd_count++] = data;
+        m->buffer[m->count++] = data;
 
-        if (cmd_count == CMD_SIZE) {
-            cmd_count = 0;
+        if (m->count == CMD_SIZE) {
+            m->count = 0;
             break;
         }
     }
 
 
     int i;
-    void (*handler)(data_t) = cmd_handlers[cmd_buffer[1]];
-    data_t data = cmd_buffer[2];
+    void (*handler)(data_t) = m->handlers[m->buffer[1]];
+    data_t data = m->buffer[2];
     data_t check = 0;
 
     for (i = 0; i < CMD_SIZE; i++) {
-        check ^= cmd_buffer[i];
+        check ^= m->buffer[i];
     }
 
     if (check != 0)
-        return cmd_error_handler(CMD_BAD_CHECK, cmd_buffer);
+        return m->error_handler(CMD_BAD_CHECK);
 
     if (!handler)
-        return cmd_error_handler(CMD_NO_HANDLER, cmd_buffer);
+        return m->error_handler(CMD_NO_HANDLER);
 
-    return handler(data);
+    return handler(data);*/
 }
 
