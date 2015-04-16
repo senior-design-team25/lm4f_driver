@@ -24,6 +24,8 @@
 #include <StellarisWare/inc/hw_nvic.h>
 #include <StellarisWare/inc/hw_types.h>
 
+#include "cmd.h"
+
 // Initialization entry point for RASLib
 extern void InitializeMCU(void);
 
@@ -66,7 +68,9 @@ extern void I2C2Handler(void);
 extern void I2C3Handler(void);
 extern void I2C4Handler(void);
 extern void I2C5Handler(void);
-extern void cmd_handler(void);
+
+void cmd0_isr(void) { cmd_handler(cmd0); }
+void cmd1_isr(void) { cmd_handler(cmd1); }
 
 
 // The vector table.  Note that the proper constructs must be placed on this to
@@ -94,8 +98,8 @@ void (* const __Vectors[])(void) = {
     PortCHandler,                           // GPIO Port C
     PortDHandler,                           // GPIO Port D
     PortEHandler,                           // GPIO Port E
-    IntDefaultHandler,                      // UART0 Rx and Tx
-    cmd_handler,                            // UART1 Rx and Tx
+    cmd0_isr,                               // UART0 Rx and Tx
+    cmd1_isr,                               // UART1 Rx and Tx
     IntDefaultHandler,                      // SSI0 Rx and Tx
     I2C0Handler,                            // I2C0 Master and Slave
     IntDefaultHandler,                      // PWM Fault

@@ -27,7 +27,7 @@ void error_handler(enum cmd_error error) {
     on = !on;
 
     Printf("bad message {%02x %02x %02x %02x}\n",
-           cmd0->buffer[0], cmd0->buffer[1], cmd0->buffer[2], cmd0->buffer[3]);
+           cmd1->buffer[0], cmd1->buffer[1], cmd1->buffer[2], cmd1->buffer[3]);
 }
 
 tServo *motor;
@@ -53,14 +53,14 @@ int main(void) {
     brake = InitializeServo(PIN_D1);
     brake_handler(0);
 
-    cmd_init(cmd0);
-    cmd_error_register(cmd0, error_handler);
+    cmd_init(cmd1);
+    cmd_error_register(cmd1, error_handler);
 
-    cmd_register(cmd0, 'm', motor_handler);
-    cmd_register(cmd0, 'b', brake_handler);
+    cmd_register(cmd1, 'm', motor_handler);
+    cmd_register(cmd1, 'b', brake_handler);
 
     while (1) {
         Wait(0.1f);
-        cmd_send(cmd0, 't', 0x00);
+        cmd_send(cmd1, 't', 0x00);
     }
 }

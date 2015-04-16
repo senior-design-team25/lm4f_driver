@@ -11,6 +11,7 @@
 
 
 struct cmd_module cmd_modules[] = {
+    {{ 0 }}, // Undefined currently
     {{ UART1_BASE, 115200, 
        SYSCTL_PERIPH_GPIOC, SYSCTL_PERIPH_UART1,
        GPIO_PC4_U1RX, GPIO_PC5_U1TX,
@@ -80,7 +81,7 @@ void cmd_send(struct cmd_module *m, data_t cmd, data_t data) {
 
 void cmd_handler(struct cmd_module *m) {
     UARTIntClear(m->BASE, UART_INT_RX);
-/*
+
     while (true) {
         int data = UARTCharGetNonBlocking(m->BASE);
 
@@ -111,6 +112,6 @@ void cmd_handler(struct cmd_module *m) {
     if (!handler)
         return m->error_handler(CMD_NO_HANDLER);
 
-    return handler(data);*/
+    return handler(data);
 }
 

@@ -60,7 +60,7 @@ struct cmd_module {
 extern struct cmd_module cmd_modules[];
 
 #define cmd0 (&cmd_modules[0])
-//#define cmd1 (&cmd_modules[1])
+#define cmd1 (&cmd_modules[1])
 
 
 void cmd_init(struct cmd_module *m);
@@ -72,6 +72,8 @@ void cmd_error_register(struct cmd_module *m,
                         void (*handler)(enum cmd_error));
 
 void cmd_send(struct cmd_module *m, data_t cmd, data_t value);
+
+void cmd_handler(struct cmd_module *m);
 
 
 #endif // CMD_H
